@@ -1,0 +1,39 @@
+services:
+  app:
+    build: .
+    volumes:
+      - .:/api
+    working_dir: /api
+    command: uvicorn login_app:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+
+  proxy-http:
+    image: mitmproxy/mitmproxy
+    command: mitmweb --web-host 0.0.0.0 --mode reverse:http://app:8000 --listen-port 8080
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    tty: true
+    depends_on:
+      - app
+
+  app-https:
+    build: .
+    volumes:
+      - .:/api
+      - ./certs:/certs:ro
+    working_dir: /api
+    command: uvicorn login_app:app --host 0.0.0.0 --port 8443 --ssl-certfile /certs/cert.pem --ssl-keyfile /certs/key.pem
+    ports:
+      - "8443:8443"
+
+  proxy-https:
+    image: mitmproxy/mitmproxy
+    command: mitmweb --web-host 0.0.0.0 --mode reverse:https://app-https:8443 --listen-port 8080 --ssl-insecure
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    tty: true
+    depends_on:
+      - app-https

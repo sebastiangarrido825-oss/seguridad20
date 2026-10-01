@@ -1,0 +1,29 @@
+services:
+  login-app:
+    build: .
+    volumes:
+      - .:/api
+    working_dir: /api
+    command: uvicorn login_app:app --host 0.0.0.0 --port 8000
+
+  main-app:
+    build: .
+    volumes:
+      - .:/api
+    working_dir: /api
+    command: uvicorn main:app --host 0.0.0.0 --port 8500
+
+  nginx:
+    image: nginx:latest
+    volumes:
+      - ./default.conf.template:/etc/nginx/templates/default.conf.template:ro
+    environment:
+      LOGIN_APP_HOST: login-app
+      LOGIN_APP_PORT: "8000"
+      MAIN_APP_HOST: main-app
+      MAIN_APP_PORT: "8500"
+    ports:
+      - "80:80"
+    depends_on:
+      - login-app
+      - main-app
